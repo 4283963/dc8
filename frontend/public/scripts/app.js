@@ -24,6 +24,7 @@ const els = {
 };
 
 let projectScanned = false;
+let currentProjectPath = '';
 
 async function checkHealth() {
   try {
@@ -106,6 +107,7 @@ els.scanBtn.addEventListener('click', async () => {
 
     projectScanned = true;
     showScanResult(data);
+    currentProjectPath = projectPath;
   } catch (e) {
     alert(`扫描失败: ${e.message}`);
   } finally {
@@ -190,6 +192,7 @@ function renderAuditResults(data) {
 function createVulnerabilityCard(vuln, expanded = false) {
   const card = document.createElement('div');
   card.className = `vulnerability-card ${expanded ? 'expanded' : ''}`;
+  card.dataset.vulnId = vuln.id;
 
   const severityClass = `severity-${vuln.severity}`;
   const severityLabel = {
@@ -224,11 +227,26 @@ function createVulnerabilityCard(vuln, expanded = false) {
         <h4>修复建议</h4>
         <div class="suggestion-box">${escapeHtml(vuln.suggestion)}</div>
       </div>
+      <div class="vuln-actions">
+        <button class="btn btn-repair" type="button" data-vuln-id="${vuln.id}">
+          <span class="btn-icon">🔧</span>
+          智能修复
+        </button>
+        <div class="repair-status hidden" data-vuln-id="${vuln.id}">
+          <span class="repair-status-text"></span>
+        </div>
+      </div>
     </div>
   `;
 
   card.querySelector('.vuln-header').addEventListener('click', () => {
     card.classList.toggle('expanded');
+  });
+
+  const repairBtn = card.querySelector('.btn-repair');
+  repairBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    await handleRepair(vuln, card);
   });
 
   return card;
@@ -238,6 +256,65 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+async function handleRepair(vuln, card) {
+  const repairBtn = card.querySelector('.btn-repair');
+  const repairStatus = card.querySelector('.repair-status');
+  const statusText = card.querySelector('.repair-status-text');
+
+  if (!currentProjectPath) {
+    alert('请先扫描项目目录');
+    return;
+  }
+
+  repairBtn.disabled = true;
+  repairBtn.innerHTML = '<span class="btn-icon">⏳</span>修复中...';
+  repairStatus.classList.remove('hidden');
+  repairStatus.className = 'repair-status repair-status-working';
+  statusText.textContent = 'AI Agent 正在分析并修复漏洞...';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/repair`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        vulnerability_id: vuln.id,
+        project_path: currentProjectPath,
+        file_path: vuln.file_path,
+        line_number: vuln.line_number,
+        vulnerability_type: vuln.type,
+        description: vuln.description,
+        code_snippet: vuln.code_snippet,
+        suggestion: vuln.suggestion,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (data.status === 'success' && data.result && data.result.success) {
+      repairStatus.className = 'repair-status repair-status-success';
+      const msg = data.result.changes_applied || data.result.message || '修复成功';
+      statusText.innerHTML = `✅ ${msg}`;
+      repairBtn.innerHTML = '<span class="btn-icon">✔</span>已修复';
+      repairBtn.disabled = true;
+      repairBtn.classList.add('btn-repaired');
+
+      if (data.result.backup_path) {
+        statusText.innerHTML += `<br><small>备份文件：${escapeHtml(data.result.backup_path)}</small>`;
+      }
+    } else {
+      repairStatus.className = 'repair-status repair-status-error';
+      statusText.innerHTML = `❌ 修复失败：${escapeHtml(data.error || (data.result && data.result.message) || '未知错误')}`;
+      repairBtn.innerHTML = '<span class="btn-icon">🔧</span>智能修复';
+      repairBtn.disabled = false;
+    }
+  } catch (e) {
+    repairStatus.className = 'repair-status repair-status-error';
+    statusText.innerHTML = `❌ 修复失败：${escapeHtml(e.message)}`;
+    repairBtn.innerHTML = '<span class="btn-icon">🔧</span>智能修复';
+    repairBtn.disabled = false;
+  }
 }
 
 checkHealth();

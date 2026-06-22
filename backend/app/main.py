@@ -8,15 +8,20 @@ from .schemas import (
     ScanResponse,
     AuditRequest,
     AuditResponse,
+    RepairRequest,
+    RepairResponse,
 )
 from .scanner import CodeScanner
 from .vectorstore import VectorStore
 from .auditor import SecurityAuditor
+from .repair_agent import RepairAgent
 
 
 _vectorstore: VectorStore = None
 _auditor: SecurityAuditor = None
+_repair_agent: RepairAgent = None
 _current_project_id: str = "default"
+_current_project_path: str = ""
 
 
 def get_vectorstore() -> VectorStore:
@@ -34,6 +39,16 @@ def get_auditor() -> SecurityAuditor:
             model_name=os.getenv("OLLAMA_MODEL", "qwen2.5:7b"),
         )
     return _auditor
+
+
+def get_repair_agent() -> RepairAgent:
+    global _repair_agent
+    if _repair_agent is None:
+        _repair_agent = RepairAgent(
+            ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+            model_name=os.getenv("OLLAMA_MODEL", "qwen2.5:7b"),
+        )
+    return _repair_agent
 
 
 def _normalize_path(path: str) -> str:
@@ -84,6 +99,7 @@ async def scan_project(request: ScanRequest):
         vs = get_vectorstore()
         project_id = _path_to_project_id(normalized_path)
         _current_project_id = project_id
+        _current_project_path = normalized_path
         total_indexed = vs.index_chunks(chunks, project_id=project_id)
 
         return ScanResponse(
@@ -136,3 +152,46 @@ async def audit_project(request: AuditRequest):
 async def has_index(project_id: str):
     vs = get_vectorstore()
     return {"has_index": vs.has_index(project_id)}
+
+
+@app.post("/api/repair", response_model=RepairResponse)
+async def repair_vulnerability(request: RepairRequest):
+    try:
+        project_path = _normalize_path(request.project_path) if request.project_path else _current_project_path
+        if not project_path:
+            raise HTTPException(
+                status_code=400,
+                detail="未指定项目路径，请先扫描项目或在请求中提供 project_path",
+            )
+
+        request_data = request.model_dump()
+        request_data["project_path"] = project_path
+        request_data["file_path"] = _normalize_path(request.file_path)
+
+        from .schemas import RepairRequest
+        normalized_request = RepairRequest(**request_data)
+
+        agent = get_repair_agent()
+        result = agent.repair(normalized_request)
+
+        if result.success:
+            return RepairResponse(
+                vulnerability_id=request.vulnerability_id,
+                status="success",
+                result=result,
+            )
+        else:
+            return RepairResponse(
+                vulnerability_id=request.vulnerability_id,
+                status="failed",
+                result=result,
+                error=result.message,
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        return RepairResponse(
+            vulnerability_id=request.vulnerability_id,
+            status="failed",
+            error=str(e),
+        )

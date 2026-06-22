@@ -497,6 +497,79 @@ textarea {
   line-height: 1.7;
 }
 
+.vuln-actions {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-repair {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+  transition: all 0.3s ease;
+}
+
+.btn-repair:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.btn-repair:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.btn-repaired {
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%) !important;
+  box-shadow: none !important;
+}
+
+.repair-status {
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.repair-status-working {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.repair-status-success {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.repair-status-error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.repair-status small {
+  font-size: 11px;
+  opacity: 0.8;
+  display: block;
+  margin-top: 4px;
+}
+
+.hidden {
+  display: none !important;
+}
+
 .loading-overlay {
   position: fixed;
   top: 0;
@@ -530,10 +603,6 @@ textarea {
 .loading-overlay p {
   color: var(--text-secondary);
   font-size: 14px;
-}
-
-.hidden {
-  display: none !important;
 }
 
 .app-footer {
