@@ -19,8 +19,14 @@ class CodeScanner:
         "cpp": [".cpp", ".cc", ".cxx", ".h", ".hpp", ".hh"],
     }
 
+    @staticmethod
+    def normalize_path(path_str: str) -> str:
+        """将路径字符串规范化为统一的正斜杠格式，避免 Windows 反斜杠导致的问题。"""
+        return path_str.replace("\\", "/")
+
     def __init__(self, project_path: str, file_types: List[str] = None):
-        self.project_path = Path(project_path)
+        normalized_path = self.normalize_path(project_path)
+        self.project_path = Path(normalized_path)
         if not self.project_path.exists():
             raise FileNotFoundError(f"Project path not found: {project_path}")
         if not self.project_path.is_dir():
@@ -55,11 +61,13 @@ class CodeScanner:
         total_lines = len(lines)
         file_type = self._get_file_type(file_path)
 
+        rel_path = file_path.relative_to(self.project_path).as_posix()
+
         if total_lines <= chunk_size:
             content = "".join(lines)
             chunks.append(
                 CodeChunk(
-                    file_path=str(file_path.relative_to(self.project_path)),
+                    file_path=rel_path,
                     content=content,
                     line_start=1,
                     line_end=total_lines,
@@ -75,7 +83,7 @@ class CodeScanner:
             content = "".join(chunk_lines)
             chunks.append(
                 CodeChunk(
-                    file_path=str(file_path.relative_to(self.project_path)),
+                    file_path=rel_path,
                     content=content,
                     line_start=start + 1,
                     line_end=end,

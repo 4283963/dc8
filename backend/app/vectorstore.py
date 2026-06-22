@@ -22,6 +22,30 @@ class Document:
         self.metadata = metadata or {}
 
 
+def _sanitize_metadata_value(value) -> str:
+    """清理元数据值中的潜在危险字符，避免 ChromaDB 解析报错。"""
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        value = str(value)
+    value = value.replace("\\", "/")
+    value = value.replace("\x00", "")
+    return value
+
+
+def _sanitize_metadata(metadata: dict) -> dict:
+    """清理整个 metadata dict，确保所有字符串值是安全的。"""
+    if not metadata:
+        return {}
+    sanitized = {}
+    for key, value in metadata.items():
+        if isinstance(value, (int, float, bool)):
+            sanitized[key] = value
+        else:
+            sanitized[key] = _sanitize_metadata_value(value)
+    return sanitized
+
+
 def _create_embedding_function():
     try:
         return embedding_functions.SentenceTransformerEmbeddingFunction(
@@ -94,12 +118,13 @@ class VectorStore:
             chunk_id = str(uuid.uuid4())
             ids.append(chunk_id)
             documents.append(chunk.content)
-            metadatas.append({
+            raw_metadata = {
                 "file_path": chunk.file_path,
                 "line_start": chunk.line_start,
                 "line_end": chunk.line_end,
                 "file_type": chunk.file_type,
-            })
+            }
+            metadatas.append(_sanitize_metadata(raw_metadata))
 
         batch_size = 100
         for i in range(0, len(ids), batch_size):
@@ -133,7 +158,7 @@ class VectorStore:
                 metadata = results["metadatas"][0][i] if results["metadatas"] else {}
                 documents.append(Document(
                     page_content=doc_text,
-                    metadata=metadata,
+                    metadata=_sanitize_metadata(metadata),
                 ))
 
         return documents
@@ -160,7 +185,7 @@ class VectorStore:
                 distance = results["distances"][0][i] if results["distances"] else 0.0
                 doc = Document(
                     page_content=doc_text,
-                    metadata=metadata,
+                    metadata=_sanitize_metadata(metadata),
                 )
                 docs_with_scores.append((doc, distance))
 

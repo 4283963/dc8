@@ -36,8 +36,13 @@ def get_auditor() -> SecurityAuditor:
     return _auditor
 
 
+def _normalize_path(path: str) -> str:
+    return path.replace("\\", "/")
+
+
 def _path_to_project_id(path: str) -> str:
-    return hashlib.md5(path.encode()).hexdigest()[:12]
+    normalized = _normalize_path(path)
+    return hashlib.md5(normalized.encode()).hexdigest()[:12]
 
 
 app = FastAPI(
@@ -64,7 +69,8 @@ async def health_check():
 async def scan_project(request: ScanRequest):
     global _current_project_id
     try:
-        scanner = CodeScanner(request.project_path, request.file_types)
+        normalized_path = _normalize_path(request.project_path)
+        scanner = CodeScanner(normalized_path, request.file_types)
         chunks, total_files = scanner.chunk_all_files()
 
         if not chunks:
@@ -72,11 +78,11 @@ async def scan_project(request: ScanRequest):
                 status="warning",
                 total_files=0,
                 total_chunks=0,
-                message=f"在 {request.project_path} 中未找到支持的代码文件",
+                message=f"在 {normalized_path} 中未找到支持的代码文件",
             )
 
         vs = get_vectorstore()
-        project_id = _path_to_project_id(request.project_path)
+        project_id = _path_to_project_id(normalized_path)
         _current_project_id = project_id
         total_indexed = vs.index_chunks(chunks, project_id=project_id)
 
