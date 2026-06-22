@@ -1,0 +1,155 @@
+---
+export const prerender = false;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>智能代码安全审计工具</title>
+    <link rel="stylesheet" href="/styles/global.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="container">
+        <div class="logo">
+          <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="M9 12l2 2 4-4"/>
+          </svg>
+          <h1>CodeShield</h1>
+          <span class="subtitle">智能代码安全审计</span>
+        </div>
+        <div id="status-indicator" class="status status-disconnected">
+          <span class="status-dot"></span>
+          <span class="status-text">未连接</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="container main-content">
+      <section class="card scan-section">
+        <h2 class="section-title">
+          <span class="title-icon">📁</span>
+          项目扫描
+        </h2>
+        <p class="section-desc">选择本地 Java 或 C++ 项目目录，进行代码索引</p>
+
+        <div class="scan-form">
+          <div class="input-group">
+            <label for="project-path">项目目录路径</label>
+            <div class="path-input-wrapper">
+              <input
+                type="text"
+                id="project-path"
+                placeholder="/path/to/your/project"
+                autocomplete="off"
+              />
+              <button id="browse-btn" class="btn btn-secondary" type="button">
+                选择目录
+              </button>
+            </div>
+            <p class="hint">支持 Java (.java) 和 C++ (.cpp, .h, .hpp 等) 文件</p>
+          </div>
+
+          <div class="file-types">
+            <label class="checkbox-label">
+              <input type="checkbox" id="scan-java" checked />
+              <span>Java</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="scan-cpp" checked />
+              <span>C/C++</span>
+            </label>
+          </div>
+
+          <button id="scan-btn" class="btn btn-primary btn-large" type="button">
+            <span class="btn-icon">🔍</span>
+            开始扫描
+          </button>
+        </div>
+
+        <div id="scan-result" class="scan-result hidden">
+          <div class="result-header">
+            <span class="result-icon">✅</span>
+            <span id="scan-message">扫描完成</span>
+          </div>
+          <div class="result-stats">
+            <div class="stat-item">
+              <span class="stat-value" id="stat-files">0</span>
+              <span class="stat-label">文件数</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value" id="stat-chunks">0</span>
+              <span class="stat-label">代码块</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card audit-section">
+        <h2 class="section-title">
+          <span class="title-icon">🛡️</span>
+          安全审计
+        </h2>
+        <p class="section-desc">输入审计问题，AI 将基于代码进行智能安全分析</p>
+
+        <div class="audit-form">
+          <div class="input-group">
+            <label for="audit-query">审计查询</label>
+            <textarea
+              id="audit-query"
+              rows="3"
+              placeholder="例如：帮我审计这个项目有哪些 SQL 注入或者内存泄漏风险"
+            ></textarea>
+          </div>
+
+          <div class="quick-queries">
+            <span class="quick-label">快速查询：</span>
+            <button class="quick-btn" data-query="SQL注入风险">SQL 注入</button>
+            <button class="quick-btn" data-query="内存泄漏风险">内存泄漏</button>
+            <button class="quick-btn" data-query="缓冲区溢出漏洞">缓冲区溢出</button>
+            <button class="quick-btn" data-query="命令注入漏洞">命令注入</button>
+            <button class="quick-btn" data-query="全面安全审计">全面审计</button>
+          </div>
+
+          <button id="audit-btn" class="btn btn-primary btn-large" type="button">
+            <span class="btn-icon">⚡</span>
+            开始审计
+          </button>
+        </div>
+      </section>
+
+      <section id="results-section" class="card results-section hidden">
+        <div class="results-header">
+          <h2 class="section-title">
+            <span class="title-icon">📋</span>
+            审计结果
+          </h2>
+          <div class="results-summary">
+            发现 <span id="vuln-count" class="vuln-count">0</span> 个潜在漏洞
+          </div>
+        </div>
+
+        <div id="audit-summary" class="audit-summary"></div>
+
+        <div id="vulnerabilities-list" class="vulnerabilities-list">
+        </div>
+      </section>
+
+      <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-spinner"></div>
+        <p id="loading-text">处理中...</p>
+      </div>
+    </main>
+
+    <footer class="app-footer">
+      <div class="container">
+        <p>CodeShield · 本地运行 · 隐私安全</p>
+      </div>
+    </footer>
+
+    <script is:inline src="/scripts/app.js"></script>
+  </body>
+</html>
